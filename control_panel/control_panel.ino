@@ -1,5 +1,4 @@
 #include <SD.h>
-
 #include "hardware.h"
 #include "common.h"
 #include <Wire.h>
@@ -8,19 +7,16 @@
 #include "button.h"
 #include <MD_CirQueue.h>
 #include "indication.h"
+#include "ram.h"
 
-int source_selector_voltage[NUM_SOURCE] = {0, 510, 610, 710, 1020};
+
+const PROGMEM int source_selector_voltage[] = {0, 510, 610, 710, 1020};
 
 //
 // Размер очереди сообщений. При переполнении - перезагрузка
-const uint8_t QUEUE_SIZE = 40;
+const PROGMEM uint8_t QUEUE_SIZE = 10;
 MD_CirQueue g_command_queue(QUEUE_SIZE, sizeof(ControlCommand));
-
-
-
-
-
-ActionPin* g_action_pins[ACTION_LIST::NUM_OF_ACTION];
+ActionPin* g_action_pins[BUTTON_LIST::NUM_OF_BUTTON];
 
 //--------------------------------------------------------------------------------------------------------------------------
 //
@@ -29,16 +25,16 @@ ActionPin* g_action_pins[ACTION_LIST::NUM_OF_ACTION];
 //--------------------------------------------------------------------------------------------------------------------------
 void setup()
 {
-    init_print();
-
-    g_action_pins[ACTION_LIST::SOURCE_SELECT]  = new MultiButton(A7, ACTION_LIST::SOURCE_SELECT, source_selector_voltage, sizeof(source_selector_voltage)/sizeof(int));
-    g_action_pins[ACTION_LIST::PT_1]           = new Potintiometr(A3, ACTION_LIST::PT_1);
-    g_action_pins[ACTION_LIST::PT_2]           = new Potintiometr(A2, ACTION_LIST::PT_2);
-    g_action_pins[ACTION_LIST::BUTTON_1]       = new Button(A0, ACTION_LIST::BUTTON_1, BUTTON_TYPE::NON_FIX_BUTTON);
-    g_action_pins[ACTION_LIST::BUTTON_2]       = new Button(9, ACTION_LIST::BUTTON_2, BUTTON_TYPE::FIX_BUTTON);
-    g_action_pins[ACTION_LIST::BUTTON_3]       = new Button(8, ACTION_LIST::BUTTON_3, BUTTON_TYPE::NON_FIX_BUTTON);
-    g_action_pins[ACTION_LIST::BUTTON_4]       = new Button(7, ACTION_LIST::BUTTON_4, BUTTON_TYPE::FIX_BUTTON);
-    g_action_pins[ACTION_LIST::ON_OFF]         = new Button(2, ACTION_LIST::ON_OFF, BUTTON_TYPE::NON_FIX_BUTTON);
+   init_print();
+   
+    g_action_pins[BUTTON_LIST::SOURCE_SELECT]  = new MultiButton(A7, BUTTON_LIST::SOURCE_SELECT, source_selector_voltage, sizeof(source_selector_voltage)/sizeof(int));
+    g_action_pins[BUTTON_LIST::PT_1]           = new Potintiometr(A3, BUTTON_LIST::PT_1);
+    g_action_pins[BUTTON_LIST::PT_2]           = new Potintiometr(A2, BUTTON_LIST::PT_2);
+    g_action_pins[BUTTON_LIST::BUTTON_1]       = new Button(A0, BUTTON_LIST::BUTTON_1, BUTTON_TYPE::NON_FIX_BUTTON);
+    g_action_pins[BUTTON_LIST::BUTTON_2]       = new Button(9, BUTTON_LIST::BUTTON_2, BUTTON_TYPE::FIX_BUTTON);
+    g_action_pins[BUTTON_LIST::BUTTON_3]       = new Button(8, BUTTON_LIST::BUTTON_3, BUTTON_TYPE::NON_FIX_BUTTON);
+    g_action_pins[BUTTON_LIST::BUTTON_4]       = new Button(7, BUTTON_LIST::BUTTON_4, BUTTON_TYPE::FIX_BUTTON);
+    g_action_pins[BUTTON_LIST::ON_OFF]         = new Button(2, BUTTON_LIST::ON_OFF, BUTTON_TYPE::NON_FIX_BUTTON);
     //
     g_command_queue.begin();
     //fTimer
@@ -57,13 +53,14 @@ void setup()
 //---------------------------------------------------------------------------------------------
 void update_state()
 {
-  for (int i = 0; i < ACTION_LIST::NUM_OF_ACTION; i++)
+  for (int i = 0; i < BUTTON_LIST::NUM_OF_BUTTON; i++)
   if (g_action_pins[i])
     if (g_action_pins[i]->process())
       {
         ControlCommand cc;
-        g_action_pins[i]->get_action(&cc);
-        if (!g_command_queue.push((uint8_t *)&cc))
+        cc.action = ACTION_LIST::BUTTON_ACTION;
+        g_action_pins[i]->get_action(&(cc.param.button_param));
+        if (!g_command_queue.push((uint8_t*)&cc))
           ASSERT(); 
       }
   update_indication();
@@ -77,11 +74,11 @@ int count = 0;
 void loop()
 {
       
+ 
+ //Serial.print("FREE_RAM : ");
+ //Serial.println(get_free_ram(), DEC); 
 
-  count++;
-  
-  delay(500); 
-  while (true)
+ while (true)
    {
       bool is_empty;
       noInterrupts();
@@ -93,6 +90,13 @@ void loop()
       noInterrupts();
       g_command_queue.pop((uint8_t*)&cc);
       interrupts();
+      if (cc.action == ACTION_LIST::BUTTON_ACTION)
+        send_button_state(cc.param.button_param.button_number);
+    /*  if (cc.action == NUM_OF_ACTION)
+      {
+        
+        }
+      
       //
       if (cc.action == ON_OFF)
        if (cc.state == PUSHED)
@@ -103,9 +107,8 @@ void loop()
           set_led_brightness((cc.state*100) / 116);
         
         }
-       
-      print_action(&cc);
+       */
+      //print_action(&cc);
    }
-   show_digit(count);
-   
+  // show_digit(count);
 }

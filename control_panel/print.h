@@ -9,6 +9,7 @@ void init_print() {}
 #ifdef SERIAL_OUTPUT
 void print_action(const ControlCommand* cc);
 void init_print();
+void send_button_state(BUTTON_LIST button);
 #endif
 
 #endif

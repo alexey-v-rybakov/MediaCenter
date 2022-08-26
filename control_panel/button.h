@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+
+
 #define TICK_PER_SECONDS    20
 #define JITTER_COUNT        2
 #define LONG_PUSH_COUNT     (TICK_PER_SECONDS*3)    
@@ -20,7 +22,7 @@ enum
 class ActionPin
  {
      public:
-        ActionPin(int pin_number, ACTION_LIST action, int pin_type)
+        ActionPin(int pin_number, BUTTON_LIST action, int pin_type)
         {
             m_action = action;
             m_pin    = pin_number;
@@ -31,10 +33,10 @@ class ActionPin
                 pinMode(m_pin, INPUT);
         }
 
-        void get_action(ControlCommand* cmd)
+        void get_action(ButtonParam* cmd)
          {
-             cmd->action = m_action;
-             cmd->state  = get_state();
+             cmd->button_number = m_action;
+             cmd->button_state  = get_state();
              return;
          }
 
@@ -61,14 +63,14 @@ class ActionPin
         int         m_state; 
         int         m_pin;
         int         m_pin_type;
-        ACTION_LIST m_action;
+        BUTTON_LIST m_action;
          
  };
 
  class Potintiometr : public ActionPin
   {
       public:
-        Potintiometr(int pin_number, ACTION_LIST action):ActionPin(pin_number, action, ANALOG)
+        Potintiometr(int pin_number, BUTTON_LIST action):ActionPin(pin_number, action, ANALOG)
         {
             m_old_state = INT16_MAX;
         }
@@ -92,7 +94,7 @@ class ActionPin
  class MultiButton : public ActionPin
  {
      public:
-        MultiButton(int pin_number, ACTION_LIST action, const int* voltage, int n_buttons):ActionPin(pin_number, action, ANALOG)
+        MultiButton(int pin_number, BUTTON_LIST action, const int* voltage, int n_buttons):ActionPin(pin_number, action, ANALOG)
         {
             m_voltage = new int[n_buttons];
             m_n_buttons = n_buttons;
@@ -146,7 +148,7 @@ typedef enum BUTTON_TYPE
  class Button : public ActionPin
  {
      public:
-        Button(int pin_number, ACTION_LIST action, BUTTON_TYPE button_type):ActionPin(pin_number, action, DIGITAL_PULLUP)
+        Button(int pin_number, BUTTON_LIST action, BUTTON_TYPE button_type):ActionPin(pin_number, action, DIGITAL_PULLUP)
         {
             m_button_state      = BUTTON_STATE::RELEASED;
             m_button_tmp_state  = BUTTON_STATE::RELEASED;
@@ -220,6 +222,6 @@ typedef enum BUTTON_TYPE
         int         m_press_count;
         BUTTON_TYPE m_button_type;
  };
-
+extern ActionPin* g_action_pins[];
 
 #endif

@@ -12,19 +12,9 @@ namespace MediaHub
         static void Main(string[] args)
         {
             SerialPort port;
-            // получаем список доступных портов 
-            string[] ports = SerialPort.GetPortNames();
-
-            Console.WriteLine("Выберите порт:");
-
-            // выводим список портов
-            for (int i = 0; i < ports.Length; i++)
-            {
-                Console.WriteLine("[" + i.ToString() + "] " + ports[i].ToString());
-            }
-            port = new SerialPort();
+            
+            port = new SerialPort(System.Environment.GetEnvironmentVariable("ARDUINO_COM_LOAD"));
             // настройки порта
-            port.PortName = ports[8];
             port.BaudRate = 115200;
             port.DataBits = 8;
             port.Parity = System.IO.Ports.Parity.None;

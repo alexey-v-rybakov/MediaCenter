@@ -85,7 +85,6 @@ public:
     _itmCount(0), _overwrite(false)
   {
     uint16_t size = sizeof(uint8_t) * _itmQty * _itmSize;
-
     CQ_PRINT("\nAllocating ", size);
     CQ_PRINTS("bytes");
     _itmData = (uint8_t *)malloc(size);
