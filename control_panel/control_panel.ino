@@ -10,7 +10,7 @@
 #include "ram.h"
 
 
-const PROGMEM int source_selector_voltage[] = {0, 510, 610, 710, 1020};
+const int source_selector_voltage[] = {0, 512, 614, 767, 1023};
 
 //
 // Размер очереди сообщений. При переполнении - перезагрузка
@@ -51,6 +51,7 @@ void setup()
 // Обновляем состояние пинов
 //
 //---------------------------------------------------------------------------------------------
+static int s = 0;
 void update_state()
 {
   for (int i = 0; i < BUTTON_LIST::NUM_OF_BUTTON; i++)
@@ -63,7 +64,7 @@ void update_state()
         if (!g_command_queue.push((uint8_t*)&cc))
           ASSERT(); 
       }
-  update_indication();
+ update_indication();
 }
 
 int on_off = 1;
@@ -74,10 +75,6 @@ int count = 0;
 void loop()
 {
       
- 
- //Serial.print("FREE_RAM : ");
- //Serial.println(get_free_ram(), DEC); 
-
  while (true)
    {
       bool is_empty;
@@ -92,6 +89,8 @@ void loop()
       interrupts();
       if (cc.action == ACTION_LIST::BUTTON_ACTION)
         send_button_state(cc.param.button_param.button_number);
+      //set_led_brightness(100);
+        
     /*  if (cc.action == NUM_OF_ACTION)
       {
         

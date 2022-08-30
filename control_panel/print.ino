@@ -2,13 +2,114 @@
 #include "ram.h"
 #include "button.h"
 
+
 #ifdef SERIAL_OUTPUT
 
-//MD_CirQueue rs_232_command(250, sizeof(char));
-
 #define MAX_RS232_COMMAND 25
-String  g_rs232_command;     
-bool    g_ignore_rs232 = false; 
+
+typedef void (*rs232_process)(char* cmd);
+
+
+class RS232_Command
+ {
+  public:
+    RS232_Command(rs232_process _prc_func)
+     {
+       prc_func = _prc_func;
+       m_pop_index = 0;
+     }
+  private:
+    rs232_process prc_func;
+    char      m_rs232_command[MAX_RS232_COMMAND];
+    uint8_t   m_push_index;
+    uint8_t   m_pop_index;
+    bool      m_ignore;
+  public:
+    void clear()
+     {
+        m_ignore = false;
+        memset(m_rs232_command, 0, sizeof(m_rs232_command));
+        m_push_index = 0;
+     }
+    bool push(char cmd_char)
+     {
+        if (m_ignore == false)
+          {
+            m_rs232_command[m_push_index] = cmd_char;
+            if (cmd_char == '\n') 
+             {
+               preprocess_command();
+               return true;
+             } 
+           m_push_index++;  
+           if (m_push_index == MAX_RS232_COMMAND)
+            {
+             strcpy(m_rs232_command, "error_command_long");
+             preprocess_command();
+             m_ignore  = true;
+             return true;
+            }
+         }
+        else
+         {
+          if (cmd_char == '\n')
+            clear();
+         }
+       return false;  
+     }   
+    public:
+     bool get_int_param(int& param)
+      {
+        char* p = get_param();
+        if (p == NULL)
+          return false;
+
+         for (int i = 0; i < strlen(p); i++) {
+          if (!isdigit(p[i])) return false;
+        }
+
+
+        
+        param = atoi(p);
+        return true;
+      }
+
+      bool get_bool_param(bool& param)
+      {
+        int b;
+        if (!get_int_param(b))
+         return false;
+        param = (b == 0)?false:true; 
+        return true;
+      }
+    
+     char* get_param()
+      {
+        uint8_t pop_index_tmp = m_pop_index + strlen(m_rs232_command + m_pop_index) + 1;
+        if (pop_index_tmp >= MAX_RS232_COMMAND)
+         return NULL;
+        if (m_rs232_command[pop_index_tmp] == 0)
+         return NULL;
+        m_pop_index = pop_index_tmp;
+        return (m_rs232_command + m_pop_index); 
+      }
+    private:
+    void preprocess_command()
+     {
+      for (int i = 0; i < MAX_RS232_COMMAND; i++)
+       {
+        if (m_rs232_command[i] == 0) break;
+        if ((m_rs232_command[i] == ':')||(m_rs232_command[i] == '\n')) m_rs232_command[i] = 0; 
+       } 
+       m_pop_index = 0;
+       prc_func(m_rs232_command);
+       clear();
+     }
+ };
+
+
+
+RS232_Command g_rs232_command(process_rs_232_command);
 
 void init_print()
 {
@@ -22,28 +123,7 @@ void serialEvent()
   {
     // получаем новый байт:
     char inChar = (char)Serial.read();
-    if (g_ignore_rs232 == false)
-     {
-    
-    g_rs232_command += inChar;
-    if (inChar == '\n') 
-    {
-      g_rs232_command.replace("\n","");
-      process_rs_232_command();
-      g_rs232_command = "";
-    } 
-    if (g_rs232_command.length() == MAX_RS232_COMMAND)
-     {
-       g_rs232_command = "";
-       g_ignore_rs232  = true;
-       Serial.println("ERROR : RS232 command is too long");
-     }
-     }
-     else
-      {
-        if (inChar == '\n')
-          g_ignore_rs232 = false;
-      }
+    g_rs232_command.push(inChar);
   }
 }
 
@@ -62,27 +142,72 @@ void send_button_state(BUTTON_LIST button)
 //
 // Обработка команды RS232, после выполнения этой функции буфер g_rs232_command буфер должен быть пустым
 //
-void process_rs_232_command()
+void process_rs_232_command(char* cmd)
  {
-  if (g_rs232_command.compareTo("get_free_ram") == 0)
+  //---------------------------------------
+  Serial.print("cmd : "); Serial.println(cmd);
+  //---------------------------------------
+//  while (true)
+//   {
+//    char* param  = g_rs232_command.get_param();
+ //   if (param == NULL)
+ //    break;
+//    Serial.print("param : "); Serial.println(param); 
+ //  }
+
+  
+if (strcmp(cmd, "set_led_brightness") == 0)
+   {
+    int state;
+    if (!g_rs232_command.get_int_param(state)) return;
+     {
+      set_led_brightness(state);
+      Serial.print("set_led_brightness:");Serial.println(state, DEC);     
+     }
+      return;
+   }
+
+  
+  if (strcmp(cmd, "get_free_ram") == 0)
    {
      Serial.print("ANSWER : get_free_ram : ");
      Serial.println(get_free_ram(), DEC);
      return;
    }
-  if (g_rs232_command.compareTo("get_full_state") == 0)
+  if (strcmp(cmd, "get_full_state") == 0)
    {
      for (int i = 0; i < BUTTON_LIST::NUM_OF_BUTTON; i++)
       send_button_state(i);
      return;
    }   
-  else
+  if (strcmp(cmd, "digit_off") == 0)
+   {
+    bool state;
+    if (!g_rs232_command.get_bool_param(state)) return;
+     {
+      on_off_digit(state);
+      Serial.print("digit_off:");Serial.println(state, DEC);    
+     }
+    return;
+   }
+  if (strcmp(cmd, "set_digit") == 0)
+   {
+    int state;
+    if (!g_rs232_command.get_int_param(state)) return;
+     {
+      show_digit(state);
+      Serial.print("set_digit:");Serial.println(state, DEC);    
+     }
+      return;
+   }
+   
    Serial.println("ERROR : RS232 command is unknow");
  }
 
 
 void print_source(const char* title, int state)
 {
+  
   /*  Serial.print(title);
     switch (state)
     {

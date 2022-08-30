@@ -15,7 +15,7 @@ namespace MediaHub
             
             port = new SerialPort(System.Environment.GetEnvironmentVariable("ARDUINO_COM_LOAD"));
             // настройки порта
-            port.BaudRate = 115200;
+            port.BaudRate = 57600;
             port.DataBits = 8;
             port.Parity = System.IO.Ports.Parity.None;
             port.StopBits = System.IO.Ports.StopBits.One;
@@ -41,8 +41,7 @@ namespace MediaHub
         {
             SerialPort sp = (SerialPort)sender;
             string indata = sp.ReadExisting();
-            Console.WriteLine(indata);
-            Console.WriteLine("==============");
+            Console.Write(indata);
         }
 
     }
